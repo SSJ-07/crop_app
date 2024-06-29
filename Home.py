@@ -10,4 +10,5 @@ st.title("Welcome")
 # 
 
 # Stream response with regional language
-# 
+# Try catch block for ML model error
+# dont use hexagon layer
