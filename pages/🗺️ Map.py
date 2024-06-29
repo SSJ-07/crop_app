@@ -7,6 +7,17 @@ import pydeck as pdk
 import os
 from lat_long_finder import generate_lat_lon_csv
 
+# Define the folder name
+folder_name = "State Files"
+
+# Check if the folder exists
+if not os.path.exists(folder_name):
+    # Create the folder
+    os.makedirs(folder_name)
+    print(f"Folder '{folder_name}' created.")
+else:
+    print(f"Folder '{folder_name}' already exists.")
+    
 df = pd.read_csv("crop_production.csv")
 
 st.set_page_config("Map", page_icon= "🗺️")
