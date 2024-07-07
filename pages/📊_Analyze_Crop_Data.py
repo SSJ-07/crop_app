@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import joblib
 
 st.set_page_config(page_title="Crop Data Analysis", page_icon=":bar_chart:")
 df = pd.read_csv("crop_production.csv")
@@ -54,13 +52,13 @@ with st.container():
     st.pyplot(fig)
 
 
-st.header("Production by Crop Type")
-with st.container():
-    fig, ax = plt.subplots()
-    crop_prod = df.groupby("Crop")["Production"].sum().reset_index()
-    sns.barplot(x="Production", y="Crop", data=crop_prod, ax=ax)
-    ax.set_title("Production by Crop Type")
-    st.pyplot(fig)
+# st.header("Production by Crop Type")
+# with st.container():
+#     fig, ax = plt.subplots()
+#     crop_prod = df.groupby("Crop")["Production"].sum().reset_index()
+#     sns.barplot(x="Production", y="Crop", data=crop_prod, ax=ax)
+#     ax.set_title("Production by Crop Type")
+#     st.pyplot(fig)
 
 st.header("Pair Plots by Crop and Season")
 with st.container():

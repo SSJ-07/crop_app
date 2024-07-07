@@ -2,9 +2,6 @@ import streamlit as st
 import speech_recognition as sr
 from googlesearch import search
 
-# from transformers import pipeline
-import requests
-from bs4 import BeautifulSoup
 import logging
 from deep_translator import GoogleTranslator
 import google.generativeai as genai
@@ -14,6 +11,7 @@ import time
 import re
 import os
 from dotenv import load_dotenv
+from st_audiorec import st_audiorec
 
 load_dotenv()
 
@@ -51,8 +49,12 @@ selected_language = languages[language]
 
 
 # Function number 1
-def transcribe_audio(audio):
+def transcribe_audio(audio_data):
     recognizer = sr.Recognizer()
+    audio_bytes = BytesIO(audio_data)
+    with sr.AudioFile(audio_bytes) as source:
+        audio = recognizer.record(source)
+
     try:
         # this uses the google speech API for different languages. Generally not used in production,
         # but it will do for our purpose as it eliminates the need for Google Cloud Authentication which
@@ -188,20 +190,14 @@ def main():
         f"Speak in {language} and the chatbot will transcribe your speech. It will also display search results based on your speech along with summaries of each link."
     )
 
-    # button for audio instructions
-    if st.button("Start Recording"):
-        st.info("Listening...")
-        recognizer = sr.Recognizer()
-        # use the microphone
-        with sr.Microphone() as source:
-            # adjust for better input quality
-            recognizer.adjust_for_ambient_noise(source)
+    wave_audio_data = st_audiorec()
 
-            # get the audio input
-            audio = recognizer.listen(source)
+    # button for audio instructions
+    if wave_audio_data != None:
+        st.info("Listening...")
 
         # transcribe audio using fn1
-        text = transcribe_audio(audio)
+        text = transcribe_audio(wave_audio_data)
 
         # display transcribed text
         if text:

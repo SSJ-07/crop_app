@@ -1,8 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import pydeck as pdk
 import os
 from lat_long_finder import generate_lat_lon_csv

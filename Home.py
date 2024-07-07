@@ -19,6 +19,7 @@ st.set_page_config("Home", page_icon=":home:")
 # Check out the map themes, change colour for column and area layer
 # make the prediction yield and msp buttons the same
 # use markdown to make highlight some part for example the prediction
+# try connecting streamlit app to a google sheet/another file/ air table, if u change the MSP in the file locally and push it
 
 
 def app():

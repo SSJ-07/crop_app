@@ -1,12 +1,6 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pydeck as pdk
-import os
 from lat_long_finder import generate_lat_lon_csv
-import pickle
 import joblib
 
 st.set_page_config("ML Model", page_icon="🤖")
@@ -17,7 +11,7 @@ model = joblib.load("model2.pkl")
 label_encoders = joblib.load("label_encoders2.pkl")
 
 
-st.title("Crop Yield Prediction")
+st.title("Maharashtra Crop Yield Prediction")
 
 # district = st.selectbox("District name", ["AHMEDNAGAR", "PUNE", ])
 maharashtra_districts = df[df["State_Name"] == "Maharashtra"]["District_Name"].unique()
@@ -191,11 +185,11 @@ msp_values = {
 }
 
 if st.button("Predict Revenue"):
-    if crop in msp_values:
+    if crop in msp_values and msp_values[crop] is not None:
         predicted_production = model.predict(input_data)
         msp = msp_values[crop] * predicted_production * 10000
         st.write(f"Predicted Revenue: ₹{msp[0]:.2f}")
-    else:
+    elif crop in msp_values and msp_values[crop] is None:
         st.markdown("MSP value for the selected crop is not available.")
         # st.popover
         # st.progress
