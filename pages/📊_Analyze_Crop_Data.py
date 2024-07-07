@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 
-st.set_page_config(page_title="Graphs 2", page_icon=":bar_chart:")
+st.set_page_config(page_title="Crop Data Analysis", page_icon=":bar_chart:")
 df = pd.read_csv("crop_production.csv")
 
 st.title("Exploratory Data Analysis")
