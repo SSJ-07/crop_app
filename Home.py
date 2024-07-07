@@ -70,7 +70,7 @@ def app():
     # Footer
     st.write("---")
     st.write(
-        "Developed by Sumedh Jadahv. For more information, contact sumedh.sa.jadhav@gmail.com."
+        "Developed by Sumedh Jadhav. For more information, contact sumedh.sa.jadhav@gmail.com."
     )
 
 

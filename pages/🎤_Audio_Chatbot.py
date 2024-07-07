@@ -1,6 +1,6 @@
 import streamlit as st
 import speech_recognition as sr
-from googlesearch import search
+import googlesearch
 
 import logging
 from deep_translator import GoogleTranslator
@@ -86,7 +86,7 @@ def translate_to_english(text, source_language):
 # does simple google searches and gets the top links
 def search_google(query):
     results = []
-    for j in search(query, num=5, stop=5, pause=2):
+    for j in googlesearch.search(query, num=5, stop=5, pause=2):
         results.append(j)
     return results
 
