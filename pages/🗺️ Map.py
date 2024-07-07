@@ -17,10 +17,10 @@ if not os.path.exists(folder_name):
     print(f"Folder '{folder_name}' created.")
 else:
     print(f"Folder '{folder_name}' already exists.")
-    
+
 df = pd.read_csv("crop_production.csv")
 
-st.set_page_config("Map", page_icon= "🗺️")
+st.set_page_config("Map", page_icon="🗺️")
 st.title("Crop Geographical Data")
 
 # Sidebar filters
@@ -82,19 +82,6 @@ production_layer = pdk.Layer(
     auto_highlight=True,
 )
 
-hex_layer = pdk.Layer(
-    "HexagonLayer",
-    data=filtered_df,
-    get_position=["lon", "lat"],
-    get_elevation="Production * 500",
-    radius=30000,
-    auto_highlight=True,
-    elevation_scale=10,
-    pickable=True,
-    elevation_range=[0, 1000],
-    extruded=True,
-    coverage=1,
-)
 
 # Tooltip for pickable attribute
 tooltip = {
@@ -110,9 +97,9 @@ tooltip = {
 # Render pydeck chart
 st.pydeck_chart(
     pdk.Deck(
-        layers=[area_layer, hex_layer, production_layer],
+        layers=[area_layer, production_layer],
         initial_view_state=view_state,
         tooltip=tooltip,
-        map_style=pdk.map_styles.DARK,
+        map_style=pdk.map_styles.CARTO_LIGHT,
     )
 )

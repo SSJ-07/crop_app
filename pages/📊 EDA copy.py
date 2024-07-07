@@ -24,45 +24,50 @@ with st.container():
     st.pyplot(fig)
 
 st.header("Crop Distribution")
+selected_crop = st.selectbox("Select Crop for Distribution", df["Crop"].unique())
 with st.container():
+    filtered_df = df[df["Crop"] == selected_crop]
     fig, ax = plt.subplots()
-    df["Crop"].value_counts().plot(kind="bar", ax=ax)
-    ax.set_title("Crop Distribution")
-    ax.set_xlabel("Crops")
+    sns.countplot(
+        data=filtered_df,
+        x="State_Name",
+        order=filtered_df["State_Name"].value_counts().index,
+        ax=ax,
+    )
+    ax.set_title(f"Distribution of {selected_crop} across States")
+    ax.set_xlabel("States")
     ax.set_ylabel("Count")
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
     st.pyplot(fig)
 
 st.header("Production by Season")
+selected_crop_season = st.selectbox(
+    "Select Crop for Production by Season", df["Crop"].unique()
+)
 with st.container():
-    filtered_df = df[df['Season'] != 'Whole Year']
+    filtered_df = df[
+        (df["Crop"] == selected_crop_season) & (df["Season"] != "Whole Year")
+    ]
     fig, ax = plt.subplots()
-    sns.boxplot(x='Season', y='Production', data=filtered_df, ax=ax)
-    ax.set_title("Production by Season")
+    sns.boxplot(x="Season", y="Production", data=filtered_df, ax=ax)
+    ax.set_title(f"Production by Season for {selected_crop_season}")
     st.pyplot(fig)
 
-st.header("Yield Analysis")
-with st.container():
-    df['Yield'] = df['Production'] / df['Area']
-    fig, ax = plt.subplots()
-    sns.histplot(df['Yield'], kde=True, ax=ax)
-    ax.set_title("Yield Distribution")
-    ax.set_xlabel("Yield (Production per unit area)")
-    st.pyplot(fig)
 
 st.header("Production by Crop Type")
 with st.container():
     fig, ax = plt.subplots()
-    crop_prod = df.groupby('Crop')['Production'].sum().reset_index()
-    sns.barplot(x='Production', y='Crop', data=crop_prod, ax=ax)
+    crop_prod = df.groupby("Crop")["Production"].sum().reset_index()
+    sns.barplot(x="Production", y="Crop", data=crop_prod, ax=ax)
     ax.set_title("Production by Crop Type")
     st.pyplot(fig)
 
 st.header("Pair Plots by Crop and Season")
 with st.container():
-    selected_crop = st.selectbox("Select Crop for Pair Plot", df['Crop'].unique())
-    selected_season = st.selectbox("Select Season for Pair Plot", df['Season'].unique())
-    filtered_df = df[(df['Crop'] == selected_crop) & (df['Season'] == selected_season)]
-    
+    selected_crop = st.selectbox("Select Crop for Pair Plot", df["Crop"].unique())
+    selected_season = st.selectbox("Select Season for Pair Plot", df["Season"].unique())
+    filtered_df = df[(df["Crop"] == selected_crop) & (df["Season"] == selected_season)]
+
     if not filtered_df.empty:
         fig = sns.pairplot(filtered_df)
         st.pyplot(fig)
@@ -72,8 +77,22 @@ with st.container():
 st.header("Production vs Area")
 with st.container():
     crop_selected = st.selectbox("Select Crop for Scatter Plot", df["Crop"].unique())
-    filtered_df = df[df["Crop"] == crop_selected]
+    filtered_df = df[(df["Crop"] == crop_selected)]
+    filtered_df = df[(df["Season"] != "Whole Year")]
     fig, ax = plt.subplots()
     sns.scatterplot(x="Area", y="Production", data=filtered_df, hue="Season", ax=ax)
     ax.set_title(f"Production vs Area for {crop_selected}")
+    st.pyplot(fig)
+
+st.header("Yield Analysis")
+selected_crop_yield = st.selectbox(
+    "Select Crop for Yield Analysis", df["Crop"].unique()
+)
+with st.container():
+    filtered_df = df[df["Crop"] == selected_crop_yield]
+    filtered_df["Yield"] = filtered_df["Production"] / filtered_df["Area"]
+    fig, ax = plt.subplots()
+    sns.histplot(filtered_df["Yield"], kde=True, ax=ax)
+    ax.set_title(f"Yield Distribution for {selected_crop_yield}")
+    ax.set_xlabel("Yield (Production per unit area)")
     st.pyplot(fig)
