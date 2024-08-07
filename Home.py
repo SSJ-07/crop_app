@@ -20,6 +20,9 @@ st.set_page_config("Home", page_icon=":home:")
 # make the prediction yield and msp buttons the same
 # use markdown to make highlight some part for example the prediction
 # try connecting streamlit app to a google sheet/another file/ air table, if u change the MSP in the file locally and push it
+# proper documentation - technical and product both
+# make a flowing chatbot
+# government policies for them
 
 
 def app():
