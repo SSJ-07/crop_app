@@ -1,0 +1,19 @@
+[server]
+# Completely disable file watching
+fileWatcherType = "none"
+# Disable auto-reload
+runOnSave = false
+
+[runner]
+# Disable fast reruns
+fastReruns = false
+# Disable magic commands that might trigger file watching
+magicEnabled = false
+
+[logger]
+# Reduce logging to minimum
+level = "error"
+
+[client]
+# Disable caching to reduce file operations
+caching = false

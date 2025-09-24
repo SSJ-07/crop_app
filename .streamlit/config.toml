@@ -1,7 +1,11 @@
-[theme]
-primaryColor = "#575fe8"
-backgroundColor = "#f5f7f3"
-secondaryBackgroundColor = "#c9eab8"
-textColor = "##262730"
-font = "sans serif"
+[server]
+# Reduce file watching to prevent inotify limit issues
+fileWatcherType = "none"
 
+[runner]
+# Disable fast reruns to reduce file watching
+fastReruns = false
+
+[logger]
+# Reduce logging verbosity
+level = "error"
