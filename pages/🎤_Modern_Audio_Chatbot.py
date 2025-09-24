@@ -50,10 +50,14 @@ def initialize_ai():
 # Initialize TTS
 def initialize_tts():
     try:
+        # Try to initialize pygame mixer with dummy driver for headless environments
+        import os
+        os.environ['SDL_AUDIODRIVER'] = 'dummy'
+        pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=512)
         pygame.mixer.init()
         return True
     except Exception as e:
-        st.error(f"TTS initialization failed: {e}")
+        st.warning(f"TTS initialization failed (audio may not be available in this environment): {e}")
         return False
 
 # Audio recording functions - using streamlit-audiorec
@@ -177,11 +181,15 @@ def speak_text(text, language="hi", tts_available=False):
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
                 tts.save(tmp_file.name)
                 
-                pygame.mixer.music.load(tmp_file.name)
-                pygame.mixer.music.play()
-                
-                # Return the temp file path so we can stop it later
-                return True, tmp_file.name
+                try:
+                    pygame.mixer.music.load(tmp_file.name)
+                    pygame.mixer.music.play()
+                    # Return the temp file path so we can stop it later
+                    return True, tmp_file.name
+                except Exception as audio_error:
+                    # If audio playback fails, still return success but without playback
+                    st.info("Audio file generated but playback not available in this environment")
+                    return True, tmp_file.name
         else:
             return False, "TTS not available"
     except Exception as e:
@@ -193,6 +201,7 @@ def stop_audio():
         pygame.mixer.music.stop()
         return True
     except Exception as e:
+        # Audio may not be available, that's okay
         return False
 
 # Fallback responses for when AI is not available
