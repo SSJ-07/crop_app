@@ -9,3 +9,11 @@ fastReruns = false
 [logger]
 # Reduce logging verbosity
 level = "error"
+
+[theme]
+# Set light theme to avoid dark background
+base = "light"
+primaryColor = "#1f77b4"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"

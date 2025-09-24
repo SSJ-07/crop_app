@@ -5,58 +5,7 @@ import joblib
 
 st.set_page_config("ML Model", page_icon="🤖")
 
-
-df = pd.read_csv("crop_production.csv")
-model = joblib.load("model2.pkl")
-label_encoders = joblib.load("label_encoders2.pkl")
-
-
-st.title("Maharashtra Crop Yield Prediction")
-
-# district = st.selectbox("District name", ["AHMEDNAGAR", "PUNE", ])
-maharashtra_districts = df[df["State_Name"] == "Maharashtra"]["District_Name"].unique()
-district = st.selectbox("District name", maharashtra_districts)
-crops = df["Crop"].unique()
-seasons = df["Season"].unique()
-crop = st.selectbox("Crop", crops)
-season = st.selectbox("Season", seasons)
-area = st.number_input("Area in Hectares", min_value=1.0)
-
-input_data = pd.DataFrame(
-    {
-        "District_Name": [district],
-        "Season": [season],
-        "Crop": [crop],
-        "Area": [area],
-    }
-)
-
-# Debug: Check input data before encoding
-# st.write("Input Data before encoding:", input_data)
-
-# Preprocessing the input data
-for column in ["District_Name", "Season", "Crop"]:
-    if column in label_encoders:
-        le = label_encoders[column]
-        try:
-            input_data[column] = le.transform(input_data[column])
-            n = 0
-        except ValueError:
-            st.write("Crop not grown in this district")
-            n = 1
-
-    # input_data[column] = label_encoders.transform(input_data[column])
-
-# Debug: Check input data after encoding
-# st.write("Input Data after encoding:", input_data)
-if n != 1:
-
-    if st.button("Predict Yield in Kilotons"):
-        predictions = model.predict(input_data)
-        st.write(f"Predicted Production: {predictions[0]:.2f} kilotons")
-
-
-# MSP caluclator
+# MSP values dictionary for revenue calculation
 msp_values = {
     "Arecanut": None,
     "Other Kharif pulses": None,
@@ -184,13 +133,156 @@ msp_values = {
     "Jute & mesta": None,
 }
 
-if st.button("Predict Revenue"):
-    if crop in msp_values and msp_values[crop] is not None:
-        predicted_production = model.predict(input_data)
-        msp = msp_values[crop] * predicted_production * 10000
-        st.write(f"Predicted Revenue: ₹{msp[0]:.2f}")
-    elif crop in msp_values and msp_values[crop] is None:
-        st.markdown("MSP value for the selected crop is not available.")
-        # st.popover
-        # st.progress
-        # with st.spinner
+df = pd.read_csv("crop_production.csv")
+model = joblib.load("model2.pkl")
+label_encoders = joblib.load("label_encoders2.pkl")
+
+
+st.title("Maharashtra Crop Yield Prediction")
+
+# Set default values for better user experience
+maharashtra_districts = df[df["State_Name"] == "Maharashtra"]["District_Name"].unique()
+crops = df["Crop"].unique()
+seasons = df["Season"].unique()
+
+# Set default indices
+pune_index = 0
+if "PUNE" in maharashtra_districts:
+    pune_index = list(maharashtra_districts).index("PUNE")
+
+rice_index = 0
+if "Rice" in crops:
+    rice_index = list(crops).index("Rice")
+
+kharif_index = 0
+if "Kharif" in seasons:
+    kharif_index = list(seasons).index("Kharif")
+
+district = st.selectbox("District name", maharashtra_districts, index=pune_index)
+crop = st.selectbox("Crop", crops, index=rice_index)
+season = st.selectbox("Season", seasons, index=kharif_index)
+area = st.number_input("Area in Hectares", min_value=1.0, value=1.0, step=1.0)
+
+input_data = pd.DataFrame(
+    {
+        "District_Name": [district],
+        "Season": [season],
+        "Crop": [crop],
+        "Area": [area],
+    }
+)
+
+# Debug: Check input data before encoding
+# st.write("Input Data before encoding:", input_data)
+
+# Preprocessing the input data
+for column in ["District_Name", "Season", "Crop"]:
+    if column in label_encoders:
+        le = label_encoders[column]
+        try:
+            input_data[column] = le.transform(input_data[column])
+            n = 0
+        except ValueError:
+            st.write("Crop not grown in this district")
+            n = 1
+
+    # input_data[column] = label_encoders.transform(input_data[column])
+
+# Debug: Check input data after encoding
+# st.write("Input Data after encoding:", input_data)
+
+# Initialize session state for results
+if 'yield_result' not in st.session_state:
+    st.session_state.yield_result = None
+if 'revenue_result' not in st.session_state:
+    st.session_state.revenue_result = None
+
+if n != 1:
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("Predict Yield in Kilotons"):
+            predictions = model.predict(input_data)
+            st.session_state.yield_result = f"Predicted Production: {predictions[0]:.2f} kilotons"
+            st.session_state.revenue_result = None  # Clear revenue when yield is clicked
+    
+    with col2:
+        if st.button("Predict Revenue"):
+            if crop in msp_values and msp_values[crop] is not None:
+                predicted_production = model.predict(input_data)
+                msp = msp_values[crop] * predicted_production * 10000
+                # Format with commas
+                formatted_revenue = f"{msp[0]:,.2f}"
+                st.session_state.revenue_result = f"Predicted Revenue: ₹{formatted_revenue}"
+                st.session_state.yield_result = None  # Clear yield when revenue is clicked
+            elif crop in msp_values and msp_values[crop] is None:
+                st.session_state.revenue_result = "MSP value for the selected crop is not available."
+                st.session_state.yield_result = None
+
+    # Display results
+    if st.session_state.yield_result:
+        st.success(st.session_state.yield_result)
+        
+        # Add area input if yield is predicted
+        st.subheader("📏 Scale to Different Areas")
+        
+        # Get the predicted yield for 1 hectare
+        yield_1_hectare = float(st.session_state.yield_result.split(": ")[1].split(" ")[0])
+        
+        # Create number input for area selection (scale down only)
+        selected_area = st.number_input(
+            "Enter Area (hectares):",
+            min_value=0.00001,  # Allow very small values
+            max_value=1.0,      # Only allow scaling down (max 1 hectare)
+            value=1.0,          # Default to 1.0 hectare
+            step=0.00001,       # Allow precise decimal input
+            format="%.5f",      # Show 5 decimal places
+            key="area_selector"
+        )
+        
+        # Calculate scaled yield and revenue
+        scaled_yield = yield_1_hectare * selected_area
+        
+        # Calculate revenue if crop has MSP value
+        if crop in msp_values and msp_values[crop] is not None:
+            scaled_revenue = msp_values[crop] * scaled_yield * 10000
+            formatted_revenue = f"₹{scaled_revenue:,.2f}"
+        else:
+            formatted_revenue = "N/A (MSP not available)"
+        
+        # Display scaled results
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Show in tons if yield is less than 0.001 kilotons, otherwise show in kilotons
+            if scaled_yield < 0.001:
+                yield_tons = scaled_yield * 1000  # Convert kilotons to tons
+                st.metric(
+                    label="Scaled Yield",
+                    value=f"{yield_tons:.3f} tons",
+                    delta=f"For {selected_area} hectares"
+                )
+            else:
+                st.metric(
+                    label="Scaled Yield",
+                    value=f"{scaled_yield:.3f} kilotons",
+                    delta=f"For {selected_area} hectares"
+                )
+        
+        with col2:
+            st.metric(
+                label="Scaled Revenue",
+                value=formatted_revenue,
+                delta=f"For {selected_area} hectares"
+            )
+    
+    if st.session_state.revenue_result:
+        if "MSP value" in st.session_state.revenue_result:
+            st.warning(st.session_state.revenue_result)
+        else:
+            st.success(st.session_state.revenue_result)
+
+
+# MSP values dictionary is now defined at the top of the file
+
+# Revenue prediction is now handled above with the yield prediction

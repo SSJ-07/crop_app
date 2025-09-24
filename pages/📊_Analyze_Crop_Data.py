@@ -35,7 +35,7 @@ with st.container():
     ax.set_title(f"Distribution of {selected_crop} across States")
     ax.set_xlabel("States")
     ax.set_ylabel("Count")
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+    plt.setp(ax.get_xticklabels(), rotation=45)
     st.pyplot(fig)
 
 st.header("Production by Season")
@@ -87,7 +87,7 @@ selected_crop_yield = st.selectbox(
     "Select Crop for Yield Analysis", df["Crop"].unique()
 )
 with st.container():
-    filtered_df = df[df["Crop"] == selected_crop_yield]
+    filtered_df = df[df["Crop"] == selected_crop_yield].copy()
     filtered_df["Yield"] = filtered_df["Production"] / filtered_df["Area"]
     fig, ax = plt.subplots()
     sns.histplot(filtered_df["Yield"], kde=True, ax=ax)

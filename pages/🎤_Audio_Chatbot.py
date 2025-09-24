@@ -1,6 +1,6 @@
 import streamlit as st
 import speech_recognition as sr
-import googlesearch
+from googlesearch import search
 
 import logging
 from deep_translator import GoogleTranslator
@@ -105,62 +105,87 @@ def translate_to_english(text, source_language):
 # does simple google searches and gets the top links
 def search_google(query):
     results = []
-    for j in googlesearch.search(query, num=5, stop=5, pause=2):
-        results.append(j)
+    try:
+        for j in search(query, num_results=5, sleep_interval=2):
+            results.append(j)
+    except Exception as e:
+        st.error(f"Search error: {e}")
+        # Fallback to a simple search result
+        results = [f"Search for: {query}"]
     return results
 
 
 # Settings for LLM
-# gemini API
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+# gemini API - only configure if API key is available
+gemini_model = None
+api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 
-# configuring the model
-generation_config = {
-    "temperature": 1,
-    "top_p": 0.95,
-    "top_k": 64,
-    "max_output_tokens": 8192,
-    "response_mime_type": "text/plain",
-}
+if api_key:
+    try:
+        genai.configure(api_key=api_key)
+        
+        # configuring the model
+        generation_config = {
+            "temperature": 1,
+            "top_p": 0.95,
+            "top_k": 64,
+            "max_output_tokens": 8192,
+            "response_mime_type": "text/plain",
+        }
 
-safety_settings = [
-    {
-        "category": "HARM_CATEGORY_HARASSMENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-    {
-        "category": "HARM_CATEGORY_HATE_SPEECH",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-    {
-        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-    {
-        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-        "threshold": "BLOCK_MEDIUM_AND_ABOVE",
-    },
-]
+        safety_settings = [
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+            },
+        ]
 
-# actually creates the LLM responsible for giving the output
-gemini_model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash-latest",
-    safety_settings=safety_settings,
-    generation_config=generation_config,
-)
+        # actually creates the LLM responsible for giving the output
+        gemini_model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash-latest",
+            safety_settings=safety_settings,
+            generation_config=generation_config,
+        )
+    except Exception as e:
+        st.warning(f"⚠️ Could not initialize Gemini AI: {e}")
+        gemini_model = None
+else:
+    st.info("ℹ️ No Google API key found. AI responses will use a simple fallback.")
 
 
 # function number 4
 def generate_content_with_LLM(prompt):
+    if gemini_model is None:
+        # Fallback response when no API key is available
+        return f"Based on your query '{prompt}', here's some helpful information:\n\n" \
+               f"• This is a crop-related query about agricultural practices\n" \
+               f"• For detailed information, please check the search results above\n" \
+               f"• Consider consulting local agricultural experts for specific advice\n\n" \
+               f"Note: To get AI-powered responses, please add your Google API key to the environment variables."
+    
     try:
         response = gemini_model.generate_content(prompt)
-        # response2 = gemini_model.
         output = response.text
         return output
 
     except Exception as e:
         logging.error(f"Error during content generation - {e}")
-        return "Encoutered error, please try again later!"
+        return f"I encountered an error while generating a response. Here's what I can tell you about your query '{prompt}':\n\n" \
+               f"• This appears to be a question about crops and agriculture\n" \
+               f"• Please check the search results above for more detailed information\n" \
+               f"• For specific agricultural advice, consider consulting local farming experts"
 
 
 # function number 5 to translate back into regional language
@@ -176,16 +201,63 @@ def translate_to_regional_language(text, target_language):
 
 # function number 5
 def text_to_speech(text, language):
+    if not text or not text.strip():
+        st.warning("⚠️ No text provided for audio generation")
+        return None
+        
     cleaned_text = remove_emojis_and_symbols(text)
+    
+    # Limit text length to avoid issues
+    if len(cleaned_text) > 500:
+        cleaned_text = cleaned_text[:500] + "..."
+    
     try:
-        tts = gTTS(text=cleaned_text, lang=language)
+        # Use a more reliable language code mapping
+        lang_codes = {
+            "hi": "hi",  # Hindi
+            "mr": "mr",  # Marathi
+            "ta": "ta",  # Tamil
+            "te": "te",  # Telugu
+            "bn": "bn",  # Bengali
+            "gu": "gu",  # Gujarati
+            "kn": "kn",  # Kannada
+            "ml": "ml",  # Malayalam
+            "ur": "ur",  # Urdu
+        }
+        
+        lang_code = lang_codes.get(language, "en")  # Default to English if language not found
+        
+        
+        tts = gTTS(text=cleaned_text, lang=lang_code, slow=False)
         audio_bytes = BytesIO()
         tts.write_to_fp(audio_bytes)
         audio_bytes.seek(0)
-        return audio_bytes
+        
+        # Check if audio was generated successfully
+        audio_data = audio_bytes.getvalue()
+        if audio_data and len(audio_data) > 0:
+            st.success(f"✅ Audio bytes generated successfully ({len(audio_data)} bytes)")
+            # Reset the BytesIO object for proper reading
+            audio_bytes.seek(0)
+            return audio_bytes
+        else:
+            st.error("❌ Audio generation produced empty result")
+            return None
+            
     except Exception as e:
-        logging.error(f"Error during text-to-speech conversion: {e}")
-        return None
+        st.error(f"❌ Text-to-speech error: {e}")
+        st.info("💡 Trying with English as fallback...")
+        
+        # Fallback to English
+        try:
+            tts = gTTS(text=cleaned_text, lang="en", slow=False)
+            audio_bytes = BytesIO()
+            tts.write_to_fp(audio_bytes)
+            audio_bytes.seek(0)
+            return audio_bytes
+        except Exception as e2:
+            st.error(f"❌ Fallback audio generation also failed: {e2}")
+            return None
 
 
 # helper function to remove emojis and symbols from the regional language output text
@@ -211,13 +283,10 @@ def main():
     
     # Add helpful instructions
     with st.expander("📝 Recording Instructions"):
-        st.write("**For best results:**")
-        st.write("1. 🎤 Use a good quality microphone")
-        st.write("2. 🔇 Minimize background noise")
-        st.write("3. 🗣️ Speak clearly and at normal pace")
-        st.write("4. ⏱️ Record for at least 2-3 seconds")
-        st.write("5. 📍 Ensure stable internet connection")
-        st.write("6. 🔄 If recognition fails, try speaking slower or louder")
+        st.write("**Instructions:**")
+        st.write("1. ▶️ Click Start to begin recording")
+        st.write("2. ⏹️ Click Stop to end recording")
+        st.write("3. 🔄 If you encounter an error, click Reset and start again")
 
     wave_audio_data = st_audiorec()
 
@@ -273,12 +342,35 @@ def main():
 
             # fn6
             st.info("🔊 Generating audio...")
-            audio_bytes = text_to_speech(regional_output, selected_language)
-            if audio_bytes:
-                st.audio(audio_bytes, format="audio/mp3", start_time=0)
-                st.success("✅ Audio generated successfully!")
-            else:
-                st.warning("⚠️ Unable to generate audio for the answer.")
+            try:
+                audio_bytes = text_to_speech(regional_output, selected_language)
+                if audio_bytes and audio_bytes.getvalue():
+                    try:
+                        # Try different audio formats for better compatibility
+                        audio_data = audio_bytes.getvalue()
+                        st.audio(audio_data, format="audio/mpeg")
+                        st.success("✅ Audio generated and ready to play!")
+                    except Exception as audio_error:
+                        st.error(f"❌ Audio playback error: {audio_error}")
+                        st.info("💡 Audio was generated but couldn't be played. You can still read the text response above.")
+                        
+                        # Try alternative approach - save to temporary file
+                        try:
+                            import tempfile
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
+                                tmp_file.write(audio_data)
+                                tmp_file.flush()
+                                st.audio(tmp_file.name, format="audio/mpeg")
+                                st.success("✅ Audio generated and ready to play! (Alternative method)")
+                        except Exception as alt_error:
+                            st.error(f"❌ Alternative audio method also failed: {alt_error}")
+                            st.info("💡 You can still read the text response above.")
+                else:
+                    st.warning("⚠️ Unable to generate audio for the answer.")
+                    st.info("💡 This might be due to text length, language support, or network issues.")
+            except Exception as e:
+                st.error(f"❌ Audio generation failed: {e}")
+                st.info("💡 You can still read the text response above.")
         else:
             st.error("❌ No audio data received. Please try recording again.")
 

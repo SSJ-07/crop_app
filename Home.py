@@ -1,7 +1,7 @@
 import streamlit as st
 
 
-st.set_page_config("Home", page_icon=":home:")
+st.set_page_config("AgriPulse: Crop Yield and Prediction App", page_icon=":home:")
 # st.title("Welcome")
 # st.subheader("Test code")
 
@@ -26,7 +26,7 @@ st.set_page_config("Home", page_icon=":home:")
 
 
 def app():
-    st.title("Welcome to the Crop Yield Analysis and Prediction App")
+    st.title("AgriPulse: Crop Yield and Prediction App")
 
     # Project Description
     st.header("Project Overview")
