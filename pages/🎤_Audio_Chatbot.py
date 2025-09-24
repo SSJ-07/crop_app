@@ -51,22 +51,41 @@ selected_language = languages[language]
 # Function number 1
 def transcribe_audio(audio_data):
     recognizer = sr.Recognizer()
+    
+    # Configure recognizer for better accuracy
+    recognizer.energy_threshold = 300
+    recognizer.dynamic_energy_threshold = True
+    recognizer.pause_threshold = 0.8
+    
     audio_bytes = BytesIO(audio_data)
-    with sr.AudioFile(audio_bytes) as source:
-        audio = recognizer.record(source)
-
+    
     try:
+        with sr.AudioFile(audio_bytes) as source:
+            # Adjust for ambient noise
+            recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            audio = recognizer.record(source)
+        
+        # Check if audio is too short or silent
+        if len(audio.frame_data) < 1000:  # Very short audio
+            return None, "Audio is too short. Please speak for at least 1 second."
+        
         # this uses the google speech API for different languages. Generally not used in production,
         # but it will do for our purpose as it eliminates the need for Google Cloud Authentication which
         # is quite troublesome
         text = recognizer.recognize_google(audio, language=f"{selected_language}-IN")
-        return text
+        
+        # Check if the recognized text is meaningful
+        if not text or len(text.strip()) < 2:
+            return None, "No clear speech detected. Please speak clearly and try again."
+        
+        return text, None
+        
     except sr.UnknownValueError:
-        return "Google Speech Recognition could not understand the audio"
+        return None, "Could not understand the audio. Please speak clearly and try again."
     except sr.RequestError as e:
-        return "Could not request results from Google Speech Recognition service; {0}".format(
-            e
-        )
+        return None, f"Speech recognition service error: {e}. Please check your internet connection."
+    except Exception as e:
+        return None, f"Audio processing error: {e}. Please try recording again."
 
 
 # Function number 2
@@ -189,59 +208,79 @@ def main():
     st.write(
         f"Speak in {language} and the chatbot will transcribe your speech. It will also display search results based on your speech along with summaries of each link."
     )
+    
+    # Add helpful instructions
+    with st.expander("📝 Recording Instructions"):
+        st.write("**For best results:**")
+        st.write("1. 🎤 Use a good quality microphone")
+        st.write("2. 🔇 Minimize background noise")
+        st.write("3. 🗣️ Speak clearly and at normal pace")
+        st.write("4. ⏱️ Record for at least 2-3 seconds")
+        st.write("5. 📍 Ensure stable internet connection")
+        st.write("6. 🔄 If recognition fails, try speaking slower or louder")
 
     wave_audio_data = st_audiorec()
 
     # button for audio instructions
     if wave_audio_data != None:
-        st.info("Listening...")
+        st.info("Processing audio...")
 
         # transcribe audio using fn1
-        text = transcribe_audio(wave_audio_data)
+        text, error = transcribe_audio(wave_audio_data)
 
-        # display transcribed text
-        if text:
-            st.success(f"You said: {text}")
+        # display transcribed text or error
+        if error:
+            st.error(f"❌ {error}")
+            st.info("💡 **Tips for better recognition:**")
+            st.write("- Speak clearly and at a normal pace")
+            st.write("- Ensure good microphone quality")
+            st.write("- Reduce background noise")
+            st.write("- Speak for at least 2-3 seconds")
+        elif text:
+            st.success(f"🎤 **You said:** {text}")
+            
+            st.info("🔄 Translating text to English...")
+
+            # using fn2
+            english_text = translate_to_english(text, selected_language)
+            st.success(f"🌐 **Translated Query:** {english_text}")
+
+            # fn3
+            # call the google search method and display relevant links
+            st.info("🔍 Searching Google...")
+            results = search_google(english_text)
+            with st.expander("📋 Google Search Results:"):
+                for i, result in enumerate(results, start=1):
+                    st.write(f"{i}. {result}")
+
+            st.info("🤖 Generating AI response...")
+
+            # fn4
+            llm_output = generate_content_with_LLM(english_text)
+
+            def stream_data():
+                for word in llm_output.split(" "):
+                    yield word + " "
+                    time.sleep(0.002)
+
+            st.write("**AI Response:**")
+            st.write_stream(stream_data)
+
+            # fn5
+            st.info("🔄 Translating response to regional language...")
+            regional_output = translate_to_regional_language(llm_output, selected_language)
+            st.write(f"**{language} Response:** {regional_output}")
+
+            # fn6
+            st.info("🔊 Generating audio...")
+            audio_bytes = text_to_speech(regional_output, selected_language)
+            if audio_bytes:
+                st.audio(audio_bytes, format="audio/mp3", start_time=0)
+                st.success("✅ Audio generated successfully!")
+            else:
+                st.warning("⚠️ Unable to generate audio for the answer.")
         else:
-            st.error("Text could not be transcribed")
-
-        st.info("Translating text to English...")
-
-        # using fn2
-        english_text = translate_to_english(text, selected_language)
-        st.success(f"Translated Query: {english_text}")
-
-        # fn3
-        # call the google search method and display relevant links
-        results = search_google(english_text)
-        with st.expander("Google Search Results Lists:"):
-            for i, result in enumerate(results, start=1):
-                st.write(f"{i}. {result}")
-                # # Extract text from link
-                # extracted_text = extract_text_from_link(result)
-
-        st.info("Prompting an LLM to generate output...")
-
-        # fn4
-        llm_output = generate_content_with_LLM(english_text)
-
-        def stream_data():
-            for word in llm_output.split(" "):
-                yield word + " "
-                time.sleep(0.002)
-
-        st.write_stream(stream_data)
-
-        # fn5
-        regional_output = translate_to_regional_language(llm_output, selected_language)
-        st.write(regional_output)
-
-        # fn6
-        audio_bytes = text_to_speech(regional_output, selected_language)
-        if audio_bytes:
-            st.audio(audio_bytes, format="audio/mp3", start_time=0)
-        else:
-            st.warning("Unable to generate audio for the answer.")
+            st.error("❌ No audio data received. Please try recording again.")
 
 
 if __name__ == "__main__":
